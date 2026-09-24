@@ -7,7 +7,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-registro}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./api/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
     ports:
       - "${DB_PORT:-5433}:5432"
     healthcheck:
@@ -16,15 +15,26 @@ services:
       timeout: 3s
       retries: 10
 
+  # Mesmo fluxo da AWS: migrations numa execução única antes da API
+  migrate:
+    build: ./api
+    command: ["node", "src/migrate.js"]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-registro}
+    depends_on:
+      db:
+        condition: service_healthy
+
   api:
     build: ./api
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-registro}
       JWT_SECRET: ${JWT_SECRET:-troque-este-segredo}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
       PORT: 3000
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "${API_PORT:-3001}:3000"
 

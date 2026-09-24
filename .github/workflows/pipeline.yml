@@ -1,0 +1,157 @@
+# CI em pull requests e pushes na main; CD automático na main quando o
+# ambiente do laboratório está ativo. O provisionamento inicial é explícito
+# (scripts/deploy.sh local). Depois do destroy.sh, as variáveis do environment
+# somem e o deploy só informa que o laboratório está encerrado.
+name: pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.diff.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        name: Detecta mudanças só de documentação
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ "${{ github.event_name }}" != push || -z "$BEFORE" || "$BEFORE" =~ ^0+$ ]]; then
+            echo "docs_only=false" >>"$GITHUB_OUTPUT"; exit 0
+          fi
+          files=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+          echo "$files"
+          if [[ -n "$files" ]] && ! grep -qvE '(^docs/|\.md$)' <<<"$files"; then
+            echo "docs_only=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "docs_only=false" >>"$GITHUB_OUTPUT"
+          fi
+
+  app:
+    name: lint e testes (API + frontend)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: registro_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U app -d registro_test" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgres://app:app@localhost:5432/registro_test
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - name: Migrations no PostgreSQL descartável (2x para provar idempotência)
+        run: npm run migrate && npm run migrate
+      - run: npm test
+
+  scripts:
+    name: scripts shell e políticas IAM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash -n scripts/*.sh scripts/lib/*.sh
+      - run: shellcheck -x scripts/*.sh scripts/lib/*.sh
+      - run: scripts/test-policies.sh
+
+  image:
+    name: build da imagem da API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (linux/amd64, mesma arquitetura da task Fargate)
+        run: docker build --platform linux/amd64 -t "registro-api:${GITHUB_SHA::12}" api
+      - name: Imagem lê o CA do RDS como usuário não-root (DB_SSL=true)
+        run: docker run --rm -e DB_SSL=true -e JWT_SECRET=ci "registro-api:${GITHUB_SHA::12}" node -e "require('./src/db')"
+      - name: Container sobe e responde ao health check
+        run: |
+          docker run -d --name api -p 3000:3000 -e JWT_SECRET=ci "registro-api:${GITHUB_SHA::12}"
+          for _ in $(seq 20); do curl -fsS localhost:3000/api/health && exit 0; sleep 1; done
+          docker logs api; exit 1
+      - name: Exporta o artefato validado
+        run: docker save "registro-api:${GITHUB_SHA::12}" | gzip >image.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-image
+          path: image.tar.gz
+          retention-days: 3
+
+  deploy:
+    name: deploy no laboratório
+    needs: [changes, app, scripts, image]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' && needs.changes.outputs.docs_only != 'true'))
+    runs-on: ubuntu-latest
+    environment: lab
+    concurrency:
+      group: deploy-lab
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Ambiente ativo?
+        id: active
+        run: |
+          if [[ -z "${{ vars.AWS_ROLE_ARN }}" ]]; then
+            echo "::notice::Laboratório encerrado: environment 'lab' sem AWS_ROLE_ARN. Nada foi publicado nem recriado."
+            echo "### Laboratório encerrado — nenhum recurso criado" >>"$GITHUB_STEP_SUMMARY"
+            echo "active=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "active=true" >>"$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.active.outputs.active == 'true'
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: steps.active.outputs.active == 'true'
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: gh-${{ github.run_id }}
+      - uses: actions/download-artifact@v4
+        if: steps.active.outputs.active == 'true'
+        with:
+          name: api-image
+      - name: Publica exatamente a imagem validada
+        if: steps.active.outputs.active == 'true'
+        run: |
+          gunzip -c image.tar.gz | docker load
+          set +e
+          scripts/deploy.sh --env "${{ vars.APP_ENV }}" --region "${{ vars.AWS_REGION }}" \
+            --account "${{ vars.AWS_ACCOUNT_ID }}" --release-only \
+            --local-image "registro-api:${GITHUB_SHA::12}" --commit "${GITHUB_SHA::12}"
+          code=$?
+          if [[ $code == 3 ]]; then
+            echo "::notice::Ambiente não está ativo na AWS; nada foi recriado."
+            echo "### Laboratório encerrado — nenhum recurso criado" >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit $code

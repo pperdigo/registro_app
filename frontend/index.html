@@ -1,43 +1,45 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login e Registro</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <main class="card">
-    <section id="auth-view">
-      <div class="tabs">
-        <button class="tab active" data-tab="login">Entrar</button>
-        <button class="tab" data-tab="register">Cadastrar</button>
-      </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login e Registro</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="card">
+      <section id="auth-view">
+        <div class="tabs">
+          <button class="tab active" data-tab="login">Entrar</button>
+          <button class="tab" data-tab="register">Cadastrar</button>
+        </div>
 
-      <form id="login-form" class="form">
-        <label>E-mail <input type="email" name="email" required /></label>
-        <label>Senha <input type="password" name="password" required /></label>
-        <button type="submit">Entrar</button>
-      </form>
+        <form id="login-form" class="form">
+          <label>E-mail <input type="email" name="email" required /></label>
+          <label>Senha <input type="password" name="password" required /></label>
+          <button type="submit">Entrar</button>
+        </form>
 
-      <form id="register-form" class="form hidden">
-        <label>Nome <input type="text" name="name" required /></label>
-        <label>E-mail <input type="email" name="email" required /></label>
-        <label>Senha <input type="password" name="password" minlength="6" required /></label>
-        <button type="submit">Criar conta</button>
-      </form>
+        <form id="register-form" class="form hidden">
+          <label>Nome <input type="text" name="name" required /></label>
+          <label>E-mail <input type="email" name="email" required /></label>
+          <label>Senha <input type="password" name="password" minlength="6" required /></label>
+          <button type="submit">Criar conta</button>
+        </form>
 
-      <p id="message" class="message"></p>
-    </section>
+        <p id="message" class="message"></p>
+      </section>
 
-    <section id="profile-view" class="hidden">
-      <h2>Olá, <span id="profile-name"></span>!</h2>
-      <p>E-mail: <strong id="profile-email"></strong></p>
-      <p>Membro desde: <span id="profile-created"></span></p>
-      <button id="logout">Sair</button>
-    </section>
-  </main>
+      <section id="profile-view" class="hidden">
+        <h2>Olá, <span id="profile-name"></span>!</h2>
+        <p>E-mail: <strong id="profile-email"></strong></p>
+        <p>Membro desde: <span id="profile-created"></span></p>
+        <button id="logout">Sair</button>
+      </section>
+    </main>
+    <footer class="version">Versão <span id="app-version">local</span></footer>
 
-  <script src="app.js"></script>
-</body>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>

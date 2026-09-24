@@ -1,11 +1,16 @@
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   min-height: 100vh;
   display: grid;
   place-items: center;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   background: #f1f5f9;
   color: #0f172a;
   padding: 16px;
@@ -20,18 +25,34 @@ body {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
-.tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
 
 .tab {
   flex: 1;
   background: #e2e8f0;
   color: #334155;
 }
-.tab.active { background: #2563eb; color: #fff; }
+.tab.active {
+  background: #2563eb;
+  color: #fff;
+}
 
-.form { display: flex; flex-direction: column; gap: 14px; }
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
 
-label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
 
 input {
   padding: 10px;
@@ -39,7 +60,10 @@ input {
   border-radius: 8px;
   font-size: 15px;
 }
-input:focus { outline: 2px solid #2563eb; border-color: transparent; }
+input:focus {
+  outline: 2px solid #2563eb;
+  border-color: transparent;
+}
 
 button {
   padding: 10px;
@@ -50,10 +74,31 @@ button {
   font-size: 15px;
   cursor: pointer;
 }
-button:hover { filter: brightness(0.95); }
+button:hover {
+  filter: brightness(0.95);
+}
 
-.message { min-height: 1.2em; font-size: 14px; margin: 14px 0 0; }
-.message.error { color: #dc2626; }
-.message.success { color: #16a34a; }
+.message {
+  min-height: 1.2em;
+  font-size: 14px;
+  margin: 14px 0 0;
+}
+.message.error {
+  color: #dc2626;
+}
+.message.success {
+  color: #16a34a;
+}
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
+
+.version {
+  position: fixed;
+  bottom: 8px;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+}

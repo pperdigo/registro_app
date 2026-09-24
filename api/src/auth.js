@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken');
 
+// Em produção o segredo é obrigatório (vem do SSM); o padrão só serve localmente.
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET é obrigatório em produção');
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'troque-este-segredo';
 
 function signToken(user) {

@@ -1,9 +1,12 @@
 const TOKEN_KEY = 'token';
+const APP_CONFIG = window.APP_CONFIG || {};
+const API_BASE = (APP_CONFIG.apiBaseUrl || '').replace(/\/$/, '');
 
 const $ = (sel) => document.querySelector(sel);
 const loginForm = $('#login-form');
 const registerForm = $('#register-form');
 const message = $('#message');
+if (APP_CONFIG.version) $('#app-version').textContent = APP_CONFIG.version;
 
 function showMessage(text, type = 'error') {
   message.textContent = text;
@@ -12,7 +15,7 @@ function showMessage(text, type = 'error') {
 
 async function api(path, options = {}) {
   const token = localStorage.getItem(TOKEN_KEY);
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -53,7 +56,10 @@ document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () 
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    const { token, user } = await api('/login', { method: 'POST', body: JSON.stringify(formData(loginForm)) });
+    const { token, user } = await api('/login', {
+      method: 'POST',
+      body: JSON.stringify(formData(loginForm)),
+    });
     localStorage.setItem(TOKEN_KEY, token);
     loginForm.reset();
     showProfile(user);
@@ -65,7 +71,10 @@ loginForm.addEventListener('submit', async (e) => {
 registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   try {
-    const { token, user } = await api('/register', { method: 'POST', body: JSON.stringify(formData(registerForm)) });
+    const { token, user } = await api('/register', {
+      method: 'POST',
+      body: JSON.stringify(formData(registerForm)),
+    });
     localStorage.setItem(TOKEN_KEY, token);
     registerForm.reset();
     showProfile(user);

@@ -13,7 +13,10 @@ async function main() {
       name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
     const { rows } = await client.query('SELECT name FROM schema_migrations');
     const applied = new Set(rows.map((r) => r.name));
-    const files = fs.readdirSync(DIR).filter((f) => f.endsWith('.sql')).sort();
+    const files = fs
+      .readdirSync(DIR)
+      .filter((f) => f.endsWith('.sql'))
+      .sort();
 
     for (const file of files) {
       if (applied.has(file)) continue;
